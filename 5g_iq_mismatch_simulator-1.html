@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5G NR — Simulation Désadaptation Câbles IQ</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#080c10;--panel:#0d1117;--border:#1e2d3d;--accent:#00e5ff;--accent2:#ff6b35;--accent3:#a8ff3e;--accent4:#ff3e9d;--warn:#ffcc00;--text:#c9d5e0;--dim:#4a5a6a;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden;}
+  header{padding:20px 32px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;gap:16px;background:linear-gradient(180deg,#0a1420 0%,transparent 100%);}
+  header h1{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;}
+  header h1 span{color:var(--accent);}
+  .tag{font-size:.6rem;background:var(--accent);color:#000;padding:2px 7px;border-radius:2px;font-weight:700;letter-spacing:1px;}
+  .hinfo{font-size:.62rem;color:var(--dim);line-height:1.8;margin-left:auto;}
+
+  .global-ctrl{display:flex;align-items:center;gap:18px;padding:10px 32px;background:#0a1118;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .cg{display:flex;align-items:center;gap:9px;}
+  .cg label{font-size:.64rem;color:var(--dim);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+  .cg input[type=range]{-webkit-appearance:none;width:150px;height:3px;background:linear-gradient(90deg,var(--sl-col,var(--accent)) var(--pct,0%),var(--border) var(--pct,0%));border-radius:2px;cursor:pointer;outline:none;}
+  .cg input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--sl-col,var(--accent));border:2px solid var(--bg);cursor:pointer;}
+  .vb{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:3px;min-width:70px;text-align:center;border:1px solid;}
+  .vb.c0{color:var(--accent);border-color:var(--accent);background:#001a20;}
+  .vb.c1{color:var(--accent3);border-color:var(--accent3);background:#0a1500;}
+  .vb.c2{color:var(--accent2);border-color:var(--accent2);background:#150a00;}
+  .vb.c3{color:var(--warn);border-color:var(--warn);background:#15100a;}
+
+  .derived{display:flex;gap:14px;padding:7px 32px;background:#060b0f;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
+  .di{font-size:.63rem;color:var(--dim);}
+  .di span{font-weight:700;}
+  .c0{color:var(--accent);}.c1{color:var(--accent3);}.c2{color:var(--accent2);}.c3{color:var(--accent4);}.cw{color:var(--warn);}
+
+  .alert-banner{display:none;align-items:center;gap:10px;padding:8px 32px;background:#120010;border-bottom:1px solid var(--accent4);font-size:.68rem;color:var(--accent4);}
+  .alert-banner.show{display:flex;}
+
+  nav{display:flex;padding:0 32px;border-bottom:1px solid var(--border);background:var(--panel);}
+  nav button{font-family:'JetBrains Mono',monospace;font-size:.67rem;font-weight:600;letter-spacing:.3px;color:var(--dim);background:transparent;border:none;padding:11px 17px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase;}
+  nav button:hover{color:var(--text);}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  .tab{display:none;padding:24px 32px 32px;animation:fi .2s ease;}
+  .tab.active{display:block;}
+  @keyframes fi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  .th{margin-bottom:16px;}
+  .th h2{font-family:'Syne',sans-serif;font-size:.98rem;font-weight:800;color:#fff;margin-bottom:4px;}
+  .th p{font-size:.67rem;color:var(--dim);line-height:1.75;max-width:860px;}
+  .th .eq{display:inline-block;margin-top:6px;background:#0a1420;border:1px solid var(--border);border-left:3px solid var(--accent);padding:6px 12px;border-radius:0 4px 4px 0;font-size:.7rem;color:var(--accent);}
+
+  .row{display:flex;gap:13px;flex-wrap:wrap;}
+  .cb{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:12px;flex:1;min-width:240px;}
+  .cb h3{font-size:.62rem;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin-bottom:8px;}
+  canvas{display:block;width:100%;border-radius:2px;}
+
+  .mrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .m{background:#0a1118;border:1px solid var(--border);border-radius:4px;padding:9px 13px;flex:1;min-width:110px;}
+  .m .ml{font-size:.58rem;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin-bottom:2px;}
+  .m .mv{font-size:.98rem;font-weight:700;color:var(--accent);}
+  .m.w .mv{color:var(--warn);}
+  .m.d .mv{color:var(--accent4);}
+  .m.ok .mv{color:var(--accent3);}
+
+  .leg{display:flex;gap:11px;flex-wrap:wrap;margin-top:8px;}
+  .li{display:flex;align-items:center;gap:4px;font-size:.6rem;color:var(--dim);}
+  .ld{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .ll{width:13px;height:2px;flex-shrink:0;}
+
+  .tbox{background:#0a1118;border:1px solid var(--border);border-radius:4px;padding:14px 18px;margin-top:14px;}
+  .tbox h4{font-size:.62rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);margin-bottom:8px;}
+  .tbox p,.tbox li{font-size:.67rem;color:var(--dim);line-height:1.8;}
+  .tbox ul{padding-left:14px;}
+  .tbox .hi{color:var(--text);}
+  .tbox .eq{color:var(--accent2);font-weight:600;}
+
+  .compare-box{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+  .cmp{flex:1;min-width:200px;background:#0a1118;border:1px solid var(--border);border-radius:4px;padding:12px 16px;}
+  .cmp .cmp-title{font-size:.62rem;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;font-weight:700;}
+  .cmp .cmp-row{display:flex;justify-content:space-between;font-size:.67rem;color:var(--dim);margin-bottom:3px;}
+  .cmp .cmp-row span{font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="tag">BB · Bande 0–300 MHz</div>
+    <h1 style="margin-top:4px;">Désadaptation Câbles <span>I/Q</span> — Simulation Interactive</h1>
+  </div>
+  <div class="hinfo">Modèle : BB seul &nbsp;|&nbsp; ε = 2π·f_BB·Δτ &nbsp;|&nbsp; v_prop ≈ 2×10⁸ m/s<br>N_ZC = 127, u = 25 &nbsp;|&nbsp; QPSK (PUCCH Fmt2 / PUSCH)</div>
+</header>
+
+<div class="global-ctrl">
+  <div class="cg">
+    <label>ΔL câbles I vs Q</label>
+    <input type="range" id="slDL" min="0" max="500" step="1" value="0" style="--sl-col:var(--accent)">
+    <div class="vb c0" id="vDL">0 mm</div>
+  </div>
+  <div class="cg">
+    <label>SNR ref</label>
+    <input type="range" id="slSNR" min="0" max="60" step="1" value="20" style="--sl-col:var(--accent3)">
+    <div class="vb c1" id="vSNR">20 dB</div>
+  </div>
+  <div class="cg">
+    <label>BW (MHz)</label>
+    <input type="range" id="slBW" min="50" max="500" step="10" value="300" style="--sl-col:var(--accent2)">
+    <div class="vb c2" id="vBW">300 MHz</div>
+  </div>
+  <div class="cg">
+    <label>f max affichée</label>
+    <input type="range" id="slFmax" min="50" max="500" step="10" value="300" style="--sl-col:var(--warn)">
+    <div class="vb c3" id="vFmax">300 MHz</div>
+  </div>
+</div>
+
+<div class="derived" id="derived">
+  <div class="di">Δτ = <span class="c0" id="vDtau">0.00 ns</span></div>
+  <div class="di">ε(f_max) = <span class="c2" id="vEpsFmax">0.0°</span></div>
+  <div class="di">f_crit = <span class="cw" id="vFcrit">∞</span></div>
+  <div class="di">ΔL_crit (σ²→0 à f_max) = <span class="c3" id="vDLcrit">—</span></div>
+  <div class="di">ΔL_crit (f_crit dans BW) = <span class="cw" id="vDLsing">—</span></div>
+</div>
+
+<div class="alert-banner" id="alertBanner">
+  <span>⚠</span>
+  <span id="alertTxt">Singularité détectée dans la bande — interférence image &gt; signal sur certaines sous-porteuses</span>
+</div>
+
+<nav>
+  <button class="active" onclick="showTab(0)">① Constellation IQ</button>
+  <button onclick="showTab(1)">② Bruit Dents de Scie</button>
+  <button onclick="showTab(2)">③ Corrélation SRS</button>
+  <button onclick="showTab(3)">④ Sigma Négatif</button>
+  <button onclick="showTab(4)">⑤ Comparaison 100 vs BW</button>
+</nav>
+
+<!-- TAB 0 -->
+<div class="tab active" id="tab0">
+  <div class="th">
+    <h2>Distorsion QPSK — PUCCH Format 2 (HARQ CSI-1) &amp; PUSCH</h2>
+    <p>La constellation est évaluée à la sous-porteuse la plus haute (f_max) — cas le plus défavorable. Avec BW = 300 MHz, les effets apparaissent 3× plus tôt qu'avec 100 MHz.</p>
+    <div class="eq">r = cos(ε/2)·s + j·sin(ε/2)·s* &nbsp;&nbsp; ε = 2π·f_BB·Δτ &nbsp;&nbsp; [mode BB]</div>
+  </div>
+  <div class="row">
+    <div class="cb" style="max-width:380px;flex:none;">
+      <h3>Constellation QPSK à f = f_max</h3>
+      <canvas id="cConst" width="350" height="350"></canvas>
+      <div class="leg">
+        <div class="li"><div class="ld" style="background:#1a3050;border:1px solid #2a4060;"></div>Idéal</div>
+        <div class="li"><div class="ld" style="background:var(--accent);"></div>Reçu (f_max)</div>
+        <div class="li"><div class="ld" style="background:var(--accent4);opacity:.6;"></div>Image</div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:11px;min-width:260px;">
+      <div class="cb"><h3>EVM % vs fréquence (0 → f_max)</h3><canvas id="cEVM" width="540" height="155"></canvas></div>
+      <div class="cb"><h3>IRR (dB) vs fréquence</h3><canvas id="cIRR" width="540" height="155"></canvas></div>
+    </div>
+  </div>
+  <div class="mrow">
+    <div class="m" id="mEps"><div class="ml">ε à f_max</div><div class="mv">0.0°</div></div>
+    <div class="m" id="mEVMpeak"><div class="ml">EVM crête (f_max)</div><div class="mv">0.0%</div></div>
+    <div class="m" id="mEVMrms"><div class="ml">EVM moyen (bande)</div><div class="mv">0.0%</div></div>
+    <div class="m ok" id="mQPSK"><div class="ml">Démod QPSK</div><div class="mv">OK</div></div>
+  </div>
+</div>
+
+<!-- TAB 1 -->
+<div class="tab" id="tab1">
+  <div class="th">
+    <h2>Profil de Bruit « Dents de Scie » — 0 à f_max</h2>
+    <p>En BB, la singularité entre dans la bande quand ΔL ≥ v/(2·f_max). Pour f_max = 300 MHz → <strong style="color:var(--accent4)">ΔL ≥ 333 mm</strong>. Mais bien avant ça, l'IRR en fin de bande dégrade déjà fortement SRS et PUSCH.</p>
+    <div class="eq">IRR(f) = tan²(π·f·Δτ) &nbsp;&nbsp; singularité à f = 1/(2·Δτ) = v/(2·ΔL)</div>
+  </div>
+  <div class="cb">
+    <h3>Spectre de puissance — 0 à f_max</h3>
+    <canvas id="cSaw" width="860" height="300"></canvas>
+    <div class="leg">
+      <div class="li"><div class="ll" style="background:var(--dim);"></div>Bruit thermique N₀</div>
+      <div class="li"><div class="ll" style="background:var(--accent2);"></div>Interférence image IRR·Ps</div>
+      <div class="li"><div class="ll" style="background:var(--accent4);"></div>Bruit total effectif</div>
+      <div class="li"><div class="ll" style="background:var(--accent3);"></div>Signal Ps</div>
+      <div class="li"><div class="ll" style="background:var(--warn);border-top:1px dashed var(--warn);"></div>Singularité f_crit</div>
+    </div>
+  </div>
+  <div class="mrow">
+    <div class="m" id="mFC"><div class="ml">f_crit (1ère sing.)</div><div class="mv">∞</div></div>
+    <div class="m" id="mNS"><div class="ml">Sing. dans bande</div><div class="mv">0</div></div>
+    <div class="m" id="mPB"><div class="ml">Sous-porteuses &gt;0 dB</div><div class="mv">0%</div></div>
+    <div class="m ok" id="mSI"><div class="ml">SRS / PUSCH</div><div class="mv">OK</div></div>
+  </div>
+  <div class="tbox">
+    <h4>Effets à 300 MHz vs 100 MHz</h4>
+    <ul>
+      <li>À f = 300 MHz et ΔL = 100 mm : <span class="eq">IRR = tan²(π × 300M × 0.5ns) = tan²(0.47 rad) = 27% = -5.7 dB</span> → interférence déjà significative.</li>
+      <li>La singularité entre dans la bande à ΔL ≈ <span class="eq">v/(2·f_max) = 333 mm</span>. Pour 100 MHz c'était ~1 m.</li>
+      <li>Les hautes fréquences de la bande (250–300 MHz) sont les premières dégradées → si SRS couvre toute la bande, ses sous-porteuses hautes sont les premières perdues.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="tab" id="tab2">
+  <div class="th">
+    <h2>Corrélation Zadoff-Chu — Détection SRS Périodique</h2>
+    <p>Avec BW = 300 MHz, ε moyen sur la séquence ZC est plus grand. Le pic de corrélation descend plus vite avec ΔL.</p>
+    <div class="eq">Pic normalisé ≈ cos(ε_moy/2) &nbsp;&nbsp; ε_moy = 2π·f_moy·Δτ &nbsp;&nbsp; f_moy ≈ f_max/2</div>
+  </div>
+  <div class="row">
+    <div class="cb" style="flex:2;">
+      <h3>Corrélation ZC normalisée (N=127, u=25)</h3>
+      <canvas id="cZC" width="600" height="260"></canvas>
+      <div class="leg">
+        <div class="li"><div class="ll" style="background:rgba(0,229,255,0.4);"></div>Idéal</div>
+        <div class="li"><div class="ll" style="background:var(--accent2);"></div>Dégradé</div>
+        <div class="li"><div class="ll" style="background:var(--warn);border-top:1px dashed var(--warn);"></div>Seuil parser = 0.50</div>
+      </div>
+    </div>
+    <div class="cb" style="max-width:250px;flex:none;">
+      <h3>Jauge pic / seuil</h3>
+      <canvas id="cPeak" width="220" height="260"></canvas>
+    </div>
+  </div>
+  <div class="mrow">
+    <div class="m" id="mPic"><div class="ml">Pic normalisé</div><div class="mv">1.000</div></div>
+    <div class="m" id="mMrg"><div class="ml">Marge / seuil (dB)</div><div class="mv">—</div></div>
+    <div class="m ok" id="mDet"><div class="ml">Détection SRS</div><div class="mv">OUI</div></div>
+  </div>
+</div>
+
+<!-- TAB 3 -->
+<div class="tab" id="tab3">
+  <div class="th">
+    <h2>Estimation σ² — Sigma Négatif</h2>
+    <p>À 300 MHz, le ΔL critique pour σ² &lt; 0 à SNR = 20 dB est <strong style="color:var(--accent4)">~21 mm</strong> (vs ~65 mm pour 100 MHz). Même un câble 2 cm plus long suffit à casser l'estimateur.</p>
+    <div class="eq">σ²_est[k] = N₀ − sin²(π·f_k·Δτ)·Ps &nbsp;&nbsp; négatif si sin(π·f·Δτ) &gt; 1/√SNR</div>
+  </div>
+  <div class="cb">
+    <h3>σ² estimé par sous-porteuse (0 → f_max)</h3>
+    <canvas id="cSigma" width="860" height="280"></canvas>
+    <div class="leg">
+      <div class="li"><div class="ll" style="background:var(--accent3);"></div>σ² &gt; 0 (correct)</div>
+      <div class="li"><div class="ll" style="background:var(--accent4);"></div>σ² &lt; 0 → crash</div>
+      <div class="li"><div class="ll" style="background:var(--warn);border-top:1px dashed var(--warn);"></div>σ² = 0</div>
+    </div>
+  </div>
+  <div class="mrow">
+    <div class="m" id="mFcS"><div class="ml">f où σ²→0 (1er)</div><div class="mv">∞</div></div>
+    <div class="m" id="mPNeg"><div class="ml">% σ² &lt; 0</div><div class="mv">0%</div></div>
+    <div class="m" id="mSMin"><div class="ml">σ²_min normalisé</div><div class="mv">1.00</div></div>
+    <div class="m ok" id="mSErr"><div class="ml">Erreur logicielle</div><div class="mv">NON</div></div>
+  </div>
+  <div class="cb" style="margin-top:14px;">
+    <h3>Frontière ΔL critique vs SNR — zone σ² &lt; 0</h3>
+    <canvas id="cCrit" width="860" height="185"></canvas>
+  </div>
+</div>
+
+<!-- TAB 4: COMPARAISON -->
+<div class="tab" id="tab4">
+  <div class="th">
+    <h2>Comparaison : Bande 100 MHz vs Bande Actuelle</h2>
+    <p>Tableau des seuils critiques calculés pour les deux configurations. Les effets sont proportionnels à f_max — toujours garder en tête la fréquence maximale de la bande.</p>
+  </div>
+  <div class="cb">
+    <h3>EVM crête vs ΔL — 100 MHz vs bande actuelle</h3>
+    <canvas id="cCmp" width="860" height="300"></canvas>
+    <div class="leg">
+      <div class="li"><div class="ll" style="background:var(--dim);"></div>BW = 100 MHz (référence)</div>
+      <div class="li"><div class="ll" style="background:var(--accent);"></div>BW actuelle (<span id="legBW">300</span> MHz)</div>
+      <div class="li"><div class="ll" style="background:var(--warn);border-top:1px dashed var(--warn);"></div>Limite EVM 17.5%</div>
+    </div>
+  </div>
+  <div class="compare-box" id="cmpTable"></div>
+  <div class="tbox" style="margin-top:14px;">
+    <h4>Règle de proportionnalité</h4>
+    <ul>
+      <li>Tous les seuils critiques (ΔL_crit pour EVM, sigma négatif, singularité) sont <span class="eq">inversement proportionnels à f_max</span>.</li>
+      <li>Passer de 100 MHz à 300 MHz → diviser tous les ΔL critiques par <span class="hi">3</span>.</li>
+      <li>Passer de 100 MHz à 500 MHz → diviser par <span class="hi">5</span>.</li>
+      <li>Un câble qui semblait "OK" à 100 MHz peut être catastrophique à 300 MHz sans aucune autre modification.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const VPROP=2e8,NZC=127,U_ZC=25,THRESH=0.5;
+let DL_mm=0,SNR_dB=20,BW_MHz=300,FMAX_MHz=300;
+
+function getBW(){return BW_MHz*1e6;}
+function getFmax(){return FMAX_MHz*1e6;}
+function getDtau(){return(DL_mm*1e-3)/VPROP;}
+function getEps(f){return 2*Math.PI*f*getDtau();}
+function getIRR(f){const e=getEps(f)/2;const t=Math.tan(e);return t*t;}
+function freqLabel(f){if(f>=1e9)return(f/1e9).toFixed(2)+'G';if(f>=1e6)return(f/1e6).toFixed(1)+'M';if(f>=1e3)return(f/1e3).toFixed(1)+'k';return f.toFixed(0);}
+
+function sc(id){const c=document.getElementById(id);const ctx=c.getContext('2d');ctx.fillStyle='#080c10';ctx.fillRect(0,0,c.width,c.height);return{ctx,W:c.width,H:c.height};}
+function dg(ctx,W,H,nx,ny){ctx.strokeStyle='#0d1820';ctx.lineWidth=1;for(let i=1;i<nx;i++){ctx.beginPath();ctx.moveTo(i*W/nx,0);ctx.lineTo(i*W/nx,H);ctx.stroke();}for(let j=1;j<ny;j++){ctx.beginPath();ctx.moveTo(0,j*H/ny);ctx.lineTo(W,j*H/ny);ctx.stroke();}}
+
+// ── TAB 0
+function drawConst(){
+  const{ctx,W,H}=sc('cConst');
+  const cx=W/2,cy=H/2,R=W*0.36;
+  dg(ctx,W,H,8,8);
+  ctx.strokeStyle='#0f1e2a';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,13);ctx.lineTo(cx,H-13);ctx.moveTo(13,cy);ctx.lineTo(W-13,cy);ctx.stroke();
+
+  const eps=getEps(getFmax());
+  const cosE=Math.cos(eps/2),sinE=Math.sin(eps/2);
+  const ideal=[[1,1],[1,-1],[-1,-1],[-1,1]].map(([I,Q])=>[I/Math.sqrt(2),Q/Math.sqrt(2)]);
+  const recv=ideal.map(([I,Q])=>[cosE*I-sinE*Q,cosE*Q+sinE*I]);
+  const img=ideal.map(([I,Q])=>[cosE*I+sinE*Q,-(cosE*Q-sinE*I)]);
+
+  if(DL_mm>0){
+    const snrLin=Math.pow(10,SNR_dB/10),na=0.35/Math.sqrt(snrLin);
+    for(let p=0;p<4;p++){
+      const[rx,ry]=recv[p];
+      for(let i=0;i<100;i++){ctx.fillStyle='rgba(0,229,255,0.07)';ctx.fillRect((rx+(Math.random()-.5)*2*na)*R+cx-1,-(ry+(Math.random()-.5)*2*na)*R+cy-1,2,2);}
+    }
+    img.forEach(([I,Q])=>{ctx.fillStyle='rgba(255,62,157,0.22)';ctx.beginPath();ctx.arc(I*R+cx,-Q*R+cy,7,0,2*Math.PI);ctx.fill();});
+  }
+  ideal.forEach(([I,Q])=>{ctx.fillStyle='#1a3050';ctx.strokeStyle='#2a4060';ctx.lineWidth=1;ctx.beginPath();ctx.arc(I*R+cx,-Q*R+cy,11,0,2*Math.PI);ctx.fill();ctx.stroke();});
+  recv.forEach(([I,Q],i)=>{
+    if(DL_mm>0){ctx.strokeStyle='rgba(0,229,255,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ideal[i][0]*R+cx,-ideal[i][1]*R+cy);ctx.lineTo(I*R+cx,-Q*R+cy);ctx.stroke();}
+    ctx.fillStyle='#00e5ff';ctx.shadowColor='#00e5ff';ctx.shadowBlur=8;ctx.beginPath();ctx.arc(I*R+cx,-Q*R+cy,5,0,2*Math.PI);ctx.fill();ctx.shadowBlur=0;
+  });
+  ctx.fillStyle='#2a4050';ctx.font='10px JetBrains Mono';ctx.textAlign='center';ctx.fillText('I',W-11,cy+4);ctx.fillText('Q',cx,11);
+
+  // f_max label on canvas
+  ctx.fillStyle='rgba(255,107,53,0.7)';ctx.font='9px JetBrains Mono';ctx.textAlign='left';
+  ctx.fillText(`f = ${FMAX_MHz} MHz`,13,H-10);
+
+  drawEVMcurve();drawIRRcurve();
+
+  const evm=Math.abs(sinE)*Math.sqrt(2)*100;
+  const N=100;let evmSum=0;
+  for(let i=0;i<N;i++){const f=(i/(N-1))*getFmax();const e=getEps(f)/2;evmSum+=Math.abs(Math.sin(e))*Math.sqrt(2)*100;}
+  const evmRms=evmSum/N;
+
+  document.getElementById('mEps').querySelector('.mv').textContent=(eps*180/Math.PI).toFixed(1)+'°';
+  document.getElementById('mEVMpeak').querySelector('.mv').textContent=evm.toFixed(1)+'%';
+  document.getElementById('mEVMrms').querySelector('.mv').textContent=evmRms.toFixed(1)+'%';
+  const mQ=document.getElementById('mQPSK');
+  if(evm>35){mQ.className='m d';mQ.querySelector('.mv').textContent='ÉCHEC';}
+  else if(evm>17.5){mQ.className='m w';mQ.querySelector('.mv').textContent='DÉGRADÉ';}
+  else{mQ.className='m ok';mQ.querySelector('.mv').textContent='OK';}
+}
+
+function drawEVMcurve(){
+  const{ctx,W,H}=sc('cEVM');
+  const ml=38,mr=8,mt=10,mb=24,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,4);
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  const N=200,fmax=getFmax();
+  const evms=Array.from({length:N},(_,i)=>{const f=(i/(N-1))*fmax;const e=getEps(f)/2;return Math.min(Math.abs(Math.sin(e))*Math.sqrt(2)*100,120);});
+  const mx=Math.max(...evms,25);
+  const toPX=(i)=>ml+(i/(N-1))*pw;
+  const toPY=(v)=>mt+(1-v/mx)*ph;
+  const ty=toPY(17.5);
+  if(ty>=mt&&ty<=H-mb){
+    ctx.strokeStyle='rgba(255,204,0,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(ml,ty);ctx.lineTo(W-mr,ty);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ffcc00';ctx.font='8px JetBrains Mono';ctx.textAlign='right';ctx.fillText('17.5%',W-mr-3,ty-3);
+  }
+  ctx.strokeStyle='var(--accent2)';ctx.lineWidth=2;ctx.beginPath();
+  evms.forEach((v,i)=>{i===0?ctx.moveTo(toPX(i),toPY(v)):ctx.lineTo(toPX(i),toPY(v));});ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('0',ml,H-mb+12);ctx.fillText(FMAX_MHz+'M',W-mr,H-mb+12);ctx.fillText(Math.round(FMAX_MHz/2)+'M',ml+pw/2,H-mb+12);
+  ctx.textAlign='right';ctx.fillText(mx.toFixed(0)+'%',ml-3,mt+4);ctx.fillText('0%',ml-3,H-mb+4);
+  ctx.fillStyle='var(--accent2)';ctx.textAlign='left';ctx.fillText('EVM%',ml+3,mt+11);
+}
+
+function drawIRRcurve(){
+  const{ctx,W,H}=sc('cIRR');
+  const ml=38,mr=8,mt=10,mb=24,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,4);
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  const N=400,mn=-40,mx=40,fmax=getFmax();
+  const toPX=(i)=>ml+(i/N)*pw;
+  const toPY=(v)=>mt+(1-(v-mn)/(mx-mn))*ph;
+  const zeroPy=toPY(0);
+  if(zeroPy>=mt&&zeroPy<=H-mb){
+    ctx.fillStyle='rgba(255,62,157,0.07)';ctx.fillRect(ml,zeroPy,pw,H-mb-zeroPy);
+    ctx.strokeStyle='rgba(255,204,0,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(ml,zeroPy);ctx.lineTo(W-mr,zeroPy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ffcc00';ctx.font='8px JetBrains Mono';ctx.textAlign='right';ctx.fillText('0dB',W-mr-3,zeroPy-3);
+  }
+  ctx.strokeStyle='#00e5ff';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<N;i++){
+    const f=(i/N)*fmax;
+    const irr=getIRR(f);
+    const v=Math.max(mn,Math.min(mx,irr>1e-12?10*Math.log10(irr):-60));
+    i===0?ctx.moveTo(toPX(i),toPY(v)):ctx.lineTo(toPX(i),toPY(v));
+  }ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('0',ml,H-mb+12);ctx.fillText(FMAX_MHz+'M',W-mr,H-mb+12);
+  ctx.textAlign='right';ctx.fillText('+40dB',ml-3,mt+4);ctx.fillText('-40dB',ml-3,H-mb+4);
+  ctx.fillStyle='#00e5ff';ctx.textAlign='left';ctx.fillText('IRR dB',ml+3,mt+11);
+}
+
+// ── TAB 1
+function drawSaw(){
+  const{ctx,W,H}=sc('cSaw');
+  const ml=48,mr=12,mt=14,mb=28,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,5);
+  const Dtau=getDtau(),snrLin=Math.pow(10,SNR_dB/10),N0=1,Ps=snrLin;
+  const N=500,fmax=getFmax();
+  const freqs=Array.from({length:N},(_,i)=>(i/(N-1))*fmax);
+  const mn=-20,mx=30;
+  const toPX=(f)=>ml+(f/fmax)*pw;
+  const toPY=(v)=>mt+(1-(v-mn)/(mx-mn))*ph;
+  const psDB=10*Math.log10(Ps),n0DB=10*Math.log10(N0);
+
+  ctx.strokeStyle='var(--accent3)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);
+  ctx.beginPath();ctx.moveTo(toPX(0),toPY(Math.min(mx,psDB)));ctx.lineTo(toPX(fmax),toPY(Math.min(mx,psDB)));ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle='#2a4050';ctx.lineWidth=1.2;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(toPX(0),toPY(n0DB));ctx.lineTo(toPX(fmax),toPY(n0DB));ctx.stroke();ctx.setLineDash([]);
+
+  const imgV=freqs.map(f=>getIRR(f)>1e-12?10*Math.log10(getIRR(f)*Ps):-60);
+  const totV=freqs.map((f,i)=>10*Math.log10(N0+Math.pow(10,imgV[i]/10)));
+
+  freqs.forEach((f,i)=>{if(totV[i]>psDB-.1){ctx.fillStyle='rgba(255,62,157,0.12)';ctx.fillRect(toPX(f)-pw/N/2,mt,pw/N,ph);}});
+
+  ctx.strokeStyle='var(--accent2)';ctx.lineWidth=2;let s2=false;ctx.beginPath();
+  freqs.forEach((f,i)=>{const v=Math.max(mn,Math.min(mx,imgV[i]));if(imgV[i]<mn){s2=false;return;}s2?ctx.lineTo(toPX(f),toPY(v)):(ctx.moveTo(toPX(f),toPY(v)),s2=true);});ctx.stroke();
+  ctx.strokeStyle='var(--accent4)';ctx.lineWidth=2;ctx.beginPath();
+  freqs.forEach((f,i)=>{i===0?ctx.moveTo(toPX(f),toPY(Math.max(mn,Math.min(mx,totV[i])))):ctx.lineTo(toPX(f),toPY(Math.max(mn,Math.min(mx,totV[i]))));});ctx.stroke();
+
+  // Singularity markers
+  if(Dtau>0){
+    let k=1;
+    while(true){
+      const fc=(2*k-1)/(2*Dtau);
+      if(fc>fmax*5) break;
+      if(fc>=0&&fc<=fmax){
+        ctx.strokeStyle='rgba(255,204,0,0.55)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+        ctx.beginPath();ctx.moveTo(toPX(fc),mt);ctx.lineTo(toPX(fc),H-mb);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#ffcc00';ctx.font='8px JetBrains Mono';ctx.textAlign='center';ctx.fillText('f_c',toPX(fc),mt+9);
+      }
+      k++;
+    }
+  }
+
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  const step=Math.ceil(FMAX_MHz/10/50)*50;
+  for(let f=0;f<=FMAX_MHz;f+=step)ctx.fillText(f+'M',toPX(f*1e6),H-mb+12);
+  ctx.textAlign='right';for(let db=mn;db<=mx;db+=10)ctx.fillText(db+'dB',ml-4,toPY(db)+3);
+  ctx.fillStyle='#2a4050';ctx.textAlign='left';ctx.fillText('dB (norm.)',ml+3,mt+12);
+
+  // Metrics
+  const Dtau2=getDtau();
+  const fc=Dtau2>0?1/(2*Dtau2):Infinity;
+  const nSing=Dtau2>0?Math.max(0,Math.floor((fmax+0.5/(2*Dtau2))/(1/Dtau2))):0;
+  // Actually count properly
+  let ns=0;
+  if(Dtau2>0){let k=1;while(true){const f=(2*k-1)/(2*Dtau2);if(f>fmax*5)break;if(f<=fmax)ns++;k++;}}
+  const bad=freqs.filter((f,i)=>totV[i]>psDB).length;
+  const pct=(bad/N*100).toFixed(1);
+  document.getElementById('mFC').querySelector('.mv').textContent=fc<=fmax?freqLabel(fc)+'Hz':'∞ (hors bande)';
+  document.getElementById('mFC').className=fc<=fmax?'m d':'m ok';
+  document.getElementById('mNS').querySelector('.mv').textContent=ns;
+  document.getElementById('mNS').className=ns>0?'m w':'m';
+  document.getElementById('mPB').querySelector('.mv').textContent=pct+'%';
+  document.getElementById('mPB').className=parseFloat(pct)>20?'m d':parseFloat(pct)>5?'m w':'m ok';
+  const ms=document.getElementById('mSI');
+  if(ns>0){ms.className='m d';ms.querySelector('.mv').textContent='ÉCHEC';}
+  else if(parseFloat(pct)>5){ms.className='m w';ms.querySelector('.mv').textContent='DÉGRADÉ';}
+  else{ms.className='m ok';ms.querySelector('.mv').textContent='OK';}
+}
+
+// ── TAB 2
+function genZC(N,u){return Array.from({length:N},(_,n)=>[Math.cos(-Math.PI*u*n*(n+1)/N),Math.sin(-Math.PI*u*n*(n+1)/N)]);}
+function fullCorr(rx,ref){const N=ref.length;return Array.from({length:N},(_,lag)=>{let re=0,im=0;for(let n=0;n<N;n++){const m=(n+lag)%N;re+=rx[m][0]*ref[n][0]+rx[m][1]*ref[n][1];im+=rx[m][1]*ref[n][0]-rx[m][0]*ref[n][1];}return Math.sqrt(re*re+im*im)/N;});}
+
+function drawZC(){
+  const{ctx,W,H}=sc('cZC');
+  const ml=36,mr=10,mt=14,mb=24,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,5);
+  const zc=genZC(NZC,U_ZC);
+  const ideal=fullCorr(zc,zc);
+  // Use average epsilon over the band as representative
+  const fmoy=getFmax()/2;
+  const eps=getEps(fmoy);
+  const cosE=Math.cos(eps/2),sinE=Math.sin(eps/2);
+  const zcD=zc.map(([I,Q])=>[cosE*I-sinE*Q,cosE*Q+sinE*I]);
+  const deg=fullCorr(zcD,zc);
+  const toPX=(n)=>ml+(n/NZC)*pw;
+  const toPY=(v)=>mt+(1-v/1.05)*ph;
+  const ty=toPY(THRESH);
+  ctx.strokeStyle='rgba(255,204,0,0.5)';ctx.lineWidth=1;ctx.setLineDash([5,3]);
+  ctx.beginPath();ctx.moveTo(ml,ty);ctx.lineTo(W-mr,ty);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#ffcc00';ctx.font='9px JetBrains Mono';ctx.textAlign='left';ctx.fillText('Seuil = 0.50',ml+4,ty-3);
+  ctx.strokeStyle='rgba(0,229,255,0.35)';ctx.lineWidth=1.5;ctx.beginPath();
+  ideal.forEach((v,i)=>{i===0?ctx.moveTo(toPX(i),toPY(v)):ctx.lineTo(toPX(i),toPY(v));});ctx.stroke();
+  ctx.strokeStyle='var(--accent2)';ctx.lineWidth=2;ctx.beginPath();
+  deg.forEach((v,i)=>{i===0?ctx.moveTo(toPX(i),toPY(v)):ctx.lineTo(toPX(i),toPY(v));});ctx.stroke();
+  const pk=Math.max(...deg);
+  ctx.fillStyle='var(--accent2)';ctx.beginPath();ctx.arc(toPX(deg.indexOf(pk)),toPY(pk),5,0,2*Math.PI);ctx.fill();
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  [0,32,64,96,126].forEach(n=>ctx.fillText(n,toPX(n),H-mb+12));
+  ctx.textAlign='right';[0,.25,.5,.75,1].forEach(v=>ctx.fillText(v.toFixed(2),ml-3,toPY(v)+3));
+  drawPeakGauge(pk);
+  const marg=pk>0?20*Math.log10(pk/THRESH):null;
+  document.getElementById('mPic').querySelector('.mv').textContent=pk.toFixed(4);
+  const mM=document.getElementById('mMrg');
+  mM.querySelector('.mv').textContent=marg!==null?marg.toFixed(1)+' dB':'—';
+  mM.className=marg!==null&&marg<0?'m d':marg!==null&&marg<3?'m w':'m ok';
+  const mD=document.getElementById('mDet');
+  if(pk>=THRESH){mD.className='m ok';mD.querySelector('.mv').textContent='OUI';}
+  else{mD.className='m d';mD.querySelector('.mv').textContent='NON';}
+}
+
+function drawPeakGauge(peak){
+  const{ctx,W,H}=sc('cPeak');
+  const cx=W/2,cy=H*0.5,R=W*0.32;
+  ctx.strokeStyle='#0f1e2a';ctx.lineWidth=12;ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,2*Math.PI);ctx.stroke();
+  const ag=Math.PI+peak*Math.PI;
+  const gr=ctx.createLinearGradient(cx-R,cy,cx+R,cy);
+  gr.addColorStop(0,'#ff3e9d');gr.addColorStop(.5,'#ffcc00');gr.addColorStop(1,'#a8ff3e');
+  ctx.strokeStyle=gr;ctx.lineWidth=10;ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,ag);ctx.stroke();
+  const ta=Math.PI+THRESH*Math.PI;
+  ctx.strokeStyle='#ffcc00';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+(R-10)*Math.cos(ta),cy+(R-10)*Math.sin(ta));ctx.lineTo(cx+(R+10)*Math.cos(ta),cy+(R+10)*Math.sin(ta));ctx.stroke();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*.8*Math.cos(ag),cy+R*.8*Math.sin(ag));ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fill();
+  ctx.fillStyle=peak>=THRESH?'#a8ff3e':'#ff3e9d';ctx.font='bold 19px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText(peak.toFixed(3),cx,cy+33);ctx.fillStyle='#2a4050';ctx.font='8px JetBrains Mono';ctx.fillText('Pic norm.',cx,cy+46);
+  ctx.fillStyle='#ffcc00';ctx.font='8px JetBrains Mono';ctx.fillText('▲ 0.5',cx,cy+59);
+  ctx.fillStyle=peak>=THRESH?'#a8ff3e':'#ff3e9d';ctx.font='bold 10px JetBrains Mono';
+  ctx.fillText(peak>=THRESH?'DÉTECTÉ':'NON DÉTECTÉ',cx,cy+76);
+}
+
+// ── TAB 3
+function drawSigma(){
+  const{ctx,W,H}=sc('cSigma');
+  const ml=48,mr=12,mt=14,mb=28,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,5);
+  const Dtau=getDtau(),snrLin=Math.pow(10,SNR_dB/10),N0=1,Ps=snrLin;
+  const N=500,fmax=getFmax();
+  const freqs=Array.from({length:N},(_,i)=>(i/(N-1))*fmax);
+  const sv=freqs.map(f=>{if(!Dtau)return N0;const h=getEps(f)/2;return N0-Math.sin(h)*Math.sin(h)*Ps;});
+  const minV=Math.min(...sv)*1.2,maxV=N0*1.35;
+  const toPX=(f)=>ml+(f/fmax)*pw;
+  const toPY=(v)=>mt+(1-(v-minV)/(maxV-minV))*ph;
+  const zp=toPY(0);
+  if(zp>=mt&&zp<=H-mb){
+    ctx.fillStyle='rgba(255,62,157,0.1)';ctx.fillRect(ml,zp,pw,H-mb-zp);
+    ctx.strokeStyle='rgba(255,204,0,0.45)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(ml,zp);ctx.lineTo(W-mr,zp);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ffcc00';ctx.font='9px JetBrains Mono';ctx.textAlign='right';ctx.fillText('σ²=0',ml-3,zp-3);
+    ctx.fillStyle='rgba(255,62,157,0.28)';ctx.font='10px JetBrains Mono';ctx.textAlign='center';
+    if(H-mb-zp>14)ctx.fillText('⚠  σ² < 0 → CRASH',ml+pw/2,(zp+H-mb)/2);
+  }
+  // f_crit markers
+  if(Dtau>0){
+    const asinV=Math.asin(Math.min(1,1/Math.sqrt(snrLin)));
+    for(let k=0;k<100;k++){
+      [asinV+k*Math.PI,Math.PI-asinV+k*Math.PI].forEach(eph=>{
+        if(eph<0) return;
+        const f=eph/(Math.PI*Dtau);
+        if(f>=0&&f<=fmax){
+          ctx.strokeStyle='rgba(255,62,157,0.5)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+          ctx.beginPath();ctx.moveTo(toPX(f),mt);ctx.lineTo(toPX(f),H-mb);ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle='var(--accent4)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';ctx.fillText('f_c',toPX(f),mt+8);
+        }
+      });
+    }
+  }
+  ctx.lineWidth=2;ctx.beginPath();
+  freqs.forEach((f,i)=>{
+    const v=Math.max(minV,Math.min(maxV,sv[i]));
+    ctx.strokeStyle=sv[i]<0?'var(--accent4)':'var(--accent3)';
+    if(i===0){ctx.moveTo(toPX(f),toPY(v));}else{ctx.lineTo(toPX(f),toPY(v));ctx.stroke();ctx.beginPath();ctx.moveTo(toPX(f),toPY(v));}
+  });ctx.stroke();
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  const step=Math.ceil(FMAX_MHz/10/50)*50;
+  for(let f=0;f<=FMAX_MHz;f+=step)ctx.fillText(f+'M',toPX(f*1e6),H-mb+12);
+  ctx.textAlign='left';ctx.fillText('σ² (norm.)',ml+3,mt+12);
+
+  const neg=(sv.filter(v=>v<0).length/N*100).toFixed(1);
+  // first f_crit
+  let fCritS=Infinity;
+  if(Dtau>0){
+    const asinV=Math.asin(Math.min(1,1/Math.sqrt(snrLin)));
+    const f0=asinV/(Math.PI*Dtau);
+    if(f0<=fmax) fCritS=f0;
+  }
+  document.getElementById('mFcS').querySelector('.mv').textContent=fCritS<=fmax?freqLabel(fCritS)+'Hz':'hors bande';
+  document.getElementById('mFcS').className=fCritS<=fmax?'m d':'m ok';
+  document.getElementById('mPNeg').querySelector('.mv').textContent=neg+'%';
+  document.getElementById('mPNeg').className=parseFloat(neg)>0?'m d':'m ok';
+  document.getElementById('mSMin').querySelector('.mv').textContent=Math.min(...sv).toFixed(3);
+  const mE=document.getElementById('mSErr');
+  if(parseFloat(neg)>0){mE.className='m d';mE.querySelector('.mv').textContent='OUI ← crash';}
+  else{mE.className='m ok';mE.querySelector('.mv').textContent='NON';}
+  drawCritCurve();
+}
+
+function drawCritCurve(){
+  const{ctx,W,H}=sc('cCrit');
+  const ml=48,mr=12,mt=12,mb=26,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,8,4);
+  const maxDL=500,fmax=getFmax();
+  const snrVals=Array.from({length:100},(_,i)=>Math.pow(10,(i/99*60)/10));
+  const dlc=snrVals.map(snr=>{const a=Math.asin(Math.min(1,1/Math.sqrt(snr)));return VPROP*a/(Math.PI*fmax)*1e3;});
+  const toPX=(db)=>ml+(db/60)*pw;
+  const toPY=(dl)=>mt+(1-dl/maxDL)*ph;
+  ctx.fillStyle='rgba(255,62,157,0.07)';ctx.beginPath();
+  snrVals.forEach((snr,i)=>{const db=10*Math.log10(snr);const dl=Math.min(maxDL,dlc[i]);i===0?ctx.moveTo(toPX(db),toPY(dl)):ctx.lineTo(toPX(db),toPY(dl));});
+  ctx.lineTo(toPX(60),toPY(0));ctx.lineTo(toPX(0),toPY(0));ctx.closePath();ctx.fill();
+  ctx.strokeStyle='var(--accent4)';ctx.lineWidth=2;ctx.beginPath();
+  snrVals.forEach((snr,i)=>{const db=10*Math.log10(snr);const dl=Math.min(maxDL,dlc[i]);i===0?ctx.moveTo(toPX(db),toPY(dl)):ctx.lineTo(toPX(db),toPY(dl));});ctx.stroke();
+
+  // Also draw 100 MHz reference line
+  const dlc100=snrVals.map(snr=>{const a=Math.asin(Math.min(1,1/Math.sqrt(snr)));return VPROP*a/(Math.PI*100e6)*1e3;});
+  ctx.strokeStyle='rgba(100,120,140,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.beginPath();
+  snrVals.forEach((snr,i)=>{const db=10*Math.log10(snr);const dl=Math.min(maxDL,dlc100[i]);i===0?ctx.moveTo(toPX(db),toPY(dl)):ctx.lineTo(toPX(db),toPY(dl));});ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#2a4050';ctx.font='8px JetBrains Mono';ctx.textAlign='left';ctx.fillText('100 MHz ref',toPX(35),toPY(Math.min(maxDL,dlc100[58]))-6);
+
+  ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=6;
+  ctx.beginPath();ctx.arc(toPX(SNR_dB),toPY(Math.min(maxDL,DL_mm)),5,0,2*Math.PI);ctx.fill();ctx.shadowBlur=0;
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  [0,10,20,30,40,50,60].forEach(db=>ctx.fillText(db+'dB',toPX(db),H-mb+12));
+  ctx.textAlign='right';[0,100,200,300,400,500].forEach(dl=>ctx.fillText(dl,ml-3,toPY(dl)+3));
+  ctx.fillStyle='rgba(255,62,157,0.35)';ctx.textAlign='center';ctx.font='9px JetBrains Mono';ctx.fillText('σ²<0',ml+pw*.72,H-mb-10);
+  ctx.fillStyle='rgba(168,255,62,0.35)';ctx.fillText('σ²>0 (OK)',ml+pw*.25,mt+13);
+  ctx.fillStyle='#2a4050';ctx.textAlign='left';ctx.fillText('ΔL (mm)',ml+3,mt+12);ctx.fillText('→ SNR (dB)',W-mr-58,H-mb-3);
+}
+
+// ── TAB 4
+function drawComparison(){
+  const{ctx,W,H}=sc('cCmp');
+  const ml=48,mr=12,mt=16,mb=28,pw=W-ml-mr,ph=H-mt-mb;
+  dg(ctx,W,H,10,5);
+  const N=300,maxDL=500;
+  const dls=Array.from({length:N},(_,i)=>(i/(N-1))*maxDL);
+  const evm100=dls.map(dl=>{const Dtau=(dl*1e-3)/VPROP;const e=getEps_static(100e6,Dtau)/2;return Math.min(Math.abs(Math.sin(e))*Math.sqrt(2)*100,110);});
+  const evmCur=dls.map(dl=>{const Dtau=(dl*1e-3)/VPROP;const e=getEps_static(getFmax(),Dtau)/2;return Math.min(Math.abs(Math.sin(e))*Math.sqrt(2)*100,110);});
+  const mx=110;
+  const toPX=(dl)=>ml+(dl/maxDL)*pw;
+  const toPY=(v)=>mt+(1-v/mx)*ph;
+  const ty=toPY(17.5);
+
+  ctx.fillStyle='rgba(0,229,255,0.05)';ctx.beginPath();
+  evmCur.forEach((v,i)=>{i===0?ctx.moveTo(toPX(dls[i]),toPY(v)):ctx.lineTo(toPX(dls[i]),toPY(v));});
+  ctx.lineTo(toPX(maxDL),toPY(0));ctx.lineTo(toPX(0),toPY(0));ctx.closePath();ctx.fill();
+
+  ctx.strokeStyle='rgba(255,204,0,0.45)';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(ml,ty);ctx.lineTo(W-mr,ty);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#ffcc00';ctx.font='8px JetBrains Mono';ctx.textAlign='right';ctx.fillText('EVM 17.5% (QPSK limit)',W-mr-3,ty-3);
+
+  ctx.strokeStyle='#2a4050';ctx.lineWidth=2;ctx.beginPath();
+  evm100.forEach((v,i)=>{i===0?ctx.moveTo(toPX(dls[i]),toPY(v)):ctx.lineTo(toPX(dls[i]),toPY(v));});ctx.stroke();
+  ctx.strokeStyle='#00e5ff';ctx.lineWidth=2.5;ctx.beginPath();
+  evmCur.forEach((v,i)=>{i===0?ctx.moveTo(toPX(dls[i]),toPY(v)):ctx.lineTo(toPX(dls[i]),toPY(v));});ctx.stroke();
+
+  // Current DL marker
+  const curEVM=evmCur[Math.round(DL_mm/maxDL*(N-1))];
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+  ctx.beginPath();ctx.moveTo(toPX(DL_mm),mt);ctx.lineTo(toPX(DL_mm),H-mb);ctx.stroke();ctx.setLineDash([]);
+
+  ctx.strokeStyle='#1e2d3d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ml,mt);ctx.lineTo(ml,H-mb);ctx.lineTo(W-mr,H-mb);ctx.stroke();
+  ctx.fillStyle='#2a4050';ctx.font='9px JetBrains Mono';ctx.textAlign='center';
+  [0,50,100,150,200,250,300,350,400,450,500].forEach(d=>ctx.fillText(d,toPX(d),H-mb+12));
+  ctx.textAlign='right';ctx.fillText('100%',ml-3,mt+4);ctx.fillText('0%',ml-3,H-mb+4);
+  ctx.fillStyle='#2a4050';ctx.textAlign='left';ctx.fillText('EVM crête %',ml+3,mt+14);ctx.fillText('→ ΔL (mm)',W-mr-70,H-mb-3);
+
+  // Update legend
+  document.getElementById('legBW').textContent=FMAX_MHz;
+
+  // Comparison table
+  buildCompareTable();
+}
+
+function getEps_static(f,Dtau){return 2*Math.PI*f*Dtau;}
+
+function buildCompareTable(){
+  const snrLin=Math.pow(10,SNR_dB/10);
+  const fmax=getFmax();
+  const calc=(fMHz)=>{
+    const f=fMHz*1e6;
+    const DLcritEVM=VPROP*Math.asin(Math.min(1,17.5/100/Math.sqrt(2)))/(Math.PI*f)*1e3;
+    const DLcritSigma=VPROP*Math.asin(Math.min(1,1/Math.sqrt(snrLin)))/(Math.PI*f)*1e3;
+    const DLcritSing=VPROP/(2*f)*1e3;
+    return{DLcritEVM,DLcritSigma,DLcritSing};
+  };
+  const r100=calc(100);
+  const rCur=calc(FMAX_MHz);
+  const fmt=(v)=>v>500?'>500':v.toFixed(0);
+  const ratio=(FMAX_MHz/100).toFixed(1);
+  document.getElementById('cmpTable').innerHTML=`
+    <div class="cmp">
+      <div class="cmp-title" style="color:var(--dim)">BW = 100 MHz (référence)</div>
+      <div class="cmp-row">ΔL limite EVM 17.5% <span style="color:var(--accent)">${fmt(r100.DLcritEVM)} mm</span></div>
+      <div class="cmp-row">ΔL limite σ² &lt; 0 <span style="color:var(--accent4)">${fmt(r100.DLcritSigma)} mm</span></div>
+      <div class="cmp-row">ΔL singularité dans BW <span style="color:var(--warn)">${fmt(r100.DLcritSing)} mm</span></div>
+    </div>
+    <div class="cmp" style="border-color:var(--accent);">
+      <div class="cmp-title" style="color:var(--accent)">BW = ${FMAX_MHz} MHz (actuelle)</div>
+      <div class="cmp-row">ΔL limite EVM 17.5% <span style="color:var(--accent)">${fmt(rCur.DLcritEVM)} mm</span></div>
+      <div class="cmp-row">ΔL limite σ² &lt; 0 <span style="color:var(--accent4)">${fmt(rCur.DLcritSigma)} mm</span></div>
+      <div class="cmp-row">ΔL singularité dans BW <span style="color:var(--warn)">${fmt(rCur.DLcritSing)} mm</span></div>
+    </div>
+    <div class="cmp" style="border-color:var(--accent4);">
+      <div class="cmp-title" style="color:var(--accent4)">Facteur de dégradation</div>
+      <div class="cmp-row">Rapport f_max <span style="color:var(--accent4)">×${ratio} plus sévère</span></div>
+      <div class="cmp-row">EVM à ΔL actuel <span style="color:var(--accent2)">${calcEVMatDL(FMAX_MHz)}</span></div>
+      <div class="cmp-row">SNR effectif <span style="color:var(--accent3)">${calcSNReff()} dB</span></div>
+    </div>`;
+}
+
+function calcEVMatDL(fMHz){
+  const Dtau=getDtau();
+  const e=2*Math.PI*(fMHz*1e6)*Dtau/2;
+  return(Math.abs(Math.sin(e))*Math.sqrt(2)*100).toFixed(1)+'%';
+}
+function calcSNReff(){
+  const Dtau=getDtau();
+  const snrLin=Math.pow(10,SNR_dB/10);
+  const e=2*Math.PI*getFmax()*Dtau/2;
+  const imgFrac=Math.sin(e)*Math.sin(e);
+  const snrEff=snrLin*(1-imgFrac);
+  return snrEff>0?(10*Math.log10(snrEff)).toFixed(1):'< 0';
+}
+
+// ── GLOBAL
+function updateDerived(){
+  const Dtau=getDtau();
+  document.getElementById('vDtau').textContent=(Dtau*1e9).toFixed(2)+' ns';
+  const epsFmax=getEps(getFmax());
+  document.getElementById('vEpsFmax').textContent=(epsFmax*180/Math.PI).toFixed(1)+'°';
+  const fc=Dtau>0?1/(2*Dtau):Infinity;
+  document.getElementById('vFcrit').textContent=fc<=getFmax()?freqLabel(fc)+'Hz':'∞ (hors bande)';
+  const snrLin=Math.pow(10,SNR_dB/10);
+  const asinV=Math.asin(Math.min(1,1/Math.sqrt(snrLin)));
+  const DLcritSigma=Dtau>0?VPROP*asinV/(Math.PI*getFmax())*1e3:Infinity;
+  document.getElementById('vDLcrit').textContent=DLcritSigma<500?DLcritSigma.toFixed(1)+' mm':'hors range';
+  const DLsing=VPROP/(2*getFmax())*1e3;
+  document.getElementById('vDLsing').textContent=DLsing.toFixed(0)+' mm';
+
+  // Alert banner
+  const hasAlert=fc<=getFmax();
+  document.getElementById('alertBanner').className='alert-banner'+(hasAlert?' show':'');
+  if(hasAlert) document.getElementById('alertTxt').textContent=`Singularité à ${freqLabel(fc)}Hz dans la bande [0–${FMAX_MHz} MHz] — interférence image > signal`;
+}
+
+function updateAll(){
+  DL_mm=parseInt(document.getElementById('slDL').value);
+  SNR_dB=parseInt(document.getElementById('slSNR').value);
+  BW_MHz=parseInt(document.getElementById('slBW').value);
+  FMAX_MHz=parseInt(document.getElementById('slFmax').value);
+
+  ['slDL','slSNR','slBW','slFmax'].forEach((id,i)=>{
+    const v=parseInt(document.getElementById(id).value);
+    const mn=parseFloat(document.getElementById(id).min);
+    const mx=parseFloat(document.getElementById(id).max);
+    document.getElementById(id).style.setProperty('--pct',((v-mn)/(mx-mn)*100)+'%');
+  });
+
+  document.getElementById('vDL').textContent=DL_mm+' mm';
+  document.getElementById('vSNR').textContent=SNR_dB+' dB';
+  document.getElementById('vBW').textContent=BW_MHz+' MHz';
+  document.getElementById('vFmax').textContent=FMAX_MHz+' MHz';
+
+  updateDerived();
+
+  const t=document.querySelector('.tab.active').id;
+  if(t==='tab0')drawConst();
+  else if(t==='tab1')drawSaw();
+  else if(t==='tab2')drawZC();
+  else if(t==='tab3')drawSigma();
+  else if(t==='tab4')drawComparison();
+}
+
+function showTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>{t.className='tab'+(j===i?' active':'');});
+  document.querySelectorAll('nav button').forEach((b,j)=>{b.className=j===i?'active':'';});
+  updateAll();
+}
+
+['slDL','slSNR','slBW','slFmax'].forEach(id=>document.getElementById(id).addEventListener('input',updateAll));
+window.addEventListener('load',updateAll);
+</script>
+</body>
+</html>
